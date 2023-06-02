@@ -1,6 +1,6 @@
 package main
 
 type GameState struct {
-    currentClient *Client
+    currentClient *Client // the client whose turn it is
     game *Game
 }

@@ -30,9 +30,13 @@ func (game *Game) checkPlayerCount() bool {
 // deal cards
 func (game *Game) dealCards() {
 	// deck := game.gameRule.generateDeck()
+    for client, _ := range game.clients {
+        client.send <- []byte("deal cards")
+    }
 }
 
 func (game *Game) run() {
+    go game.gameLoop()
     for {
         select {
         case client := <-game.Add:
@@ -44,9 +48,6 @@ func (game *Game) run() {
 }
 
 func (game *Game) gameLoop() {
-    for {
-        if game.checkPlayerCount() {
-            game.dealCards()
-        }
-    }
+    // tobe modifyed
+    // state machine
 }
