@@ -24,7 +24,7 @@ message Player {
     int32 card_num = 4;
 }
 
-message StreamReuqest {
+message StreamRequest {
     PlayCards play_cards = 1;
 }
 
@@ -45,12 +45,12 @@ message Card { // 包括花色和大小
 
 message StreamResponse { // 返回游戏状态
     oneof response {
-        Continue continue = 1;
+        Continue continue = 1; 
         End end = 2;
     }
 }
 
-message Continue {
+message Continue { // Game continue
     int32 score = 1; // 当前分数
     repeated PlayCards players = 2; // 玩家列表，以及它上一次出的牌
     repeated Card cards = 3; // 当前桌面上的牌，当前出牌玩家必须出比这些牌大的牌
@@ -58,6 +58,11 @@ message Continue {
     // repeated Card cards = 5; // 对应玩家的手牌
 }
 
+message Fail { // Play cards fail
+    string reason = 1;
+}
+
 message End { // Game end
     
 }
+
