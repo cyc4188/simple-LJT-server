@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package main
+package main;
 
 option go_package = "./proto";
 
@@ -15,6 +15,11 @@ service Game {
 message ConnectRequest {
     string id = 1;
     string name = 2;
+}
+
+message ConnectResponse {
+    string token = 1;
+    repeated Player players = 2;
 }
 
 message Player {
