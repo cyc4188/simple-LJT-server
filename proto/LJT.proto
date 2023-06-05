@@ -1,13 +1,13 @@
 syntax = "proto3";
 
-package main;
+package LJT;
 
 option go_package = "./proto";
 
 import "google/protobuf/timestamp.proto";
 
 service Game {
-    rpc Connect (ConnectRequest) returns (ConnectResponse) {} // used to connect the server
+    rpc Connecting (ConnectRequest) returns (ConnectResponse) {} // used to connect the server
     rpc Stream (stream StreamRequest) returns (stream StreamResponse) {} // used to modify the game state
 }
 

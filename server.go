@@ -12,21 +12,21 @@ import (
 
 type GameServer struct {
     proto.UnimplementedGameServer;
-    game *Game;
+    game *Game; // TODO: support for multiple games match
     clients map[uuid.UUID]*Client;
     mu sync.RWMutex;
 }
 
-func NewGameServer() *GameServer {
+func NewGameServer(game *Game) *GameServer {
     return &GameServer{
-        game: NewGame(NewDdzGameRule()),
+        game: game,
         clients: make(map[uuid.UUID]*Client),
     }
 }
 
 // 处理连接请求
 // refer: proto ConnectRequest
-func (s *GameServer) Connect(ctx context.Context, req *proto.ConnectRequest) (*proto.ConnectResponse, error) {
+func (s *GameServer) Connecting(ctx context.Context, req *proto.ConnectRequest) (*proto.ConnectResponse, error) {
     if (s.game.isGameFull()) {
         return nil, errors.New("server is full")
     }  
