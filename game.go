@@ -1,21 +1,35 @@
 package main
 
+import (
+	"sync"
+
+	"github.com/google/uuid"
+)
+
 type Game struct {
-	clients  map[*Client]uint // all connected clients and ites id
+	clients  map[*Client]uuid.UUID // all connected clients and ites id
 	gameRule GameRule
-    Add chan *Client
-    Remove chan *Client
+    Mu sync.RWMutex
 }
 
 func NewGame(gameRule GameRule) *Game {
 	return &Game{
-		clients:  make(map[*Client]uint),
+		clients:  make(map[*Client]uuid.UUID),
 		gameRule: gameRule,
 	}
 }
 
+
+func (game *Game) isGameFull() bool {
+    return game.clientCount() >= game.gameRule.PlayerCount()
+}
+
+func (game *Game) clientCount() int {
+    return len(game.clients)
+}
+
 func (game *Game) addClient(client *Client) {
-	game.clients[client] = 0
+	game.clients[client] = client.uuid
 }
 
 func (game *Game) removeClient(client *Client) {
@@ -27,27 +41,3 @@ func (game *Game) checkPlayerCount() bool {
 	return len(game.clients) == game.gameRule.PlayerCount()
 }
 
-// deal cards
-func (game *Game) dealCards() {
-	// deck := game.gameRule.generateDeck()
-    for client, _ := range game.clients {
-        client.send <- []byte("deal cards")
-    }
-}
-
-func (game *Game) run() {
-    go game.gameLoop()
-    for {
-        select {
-        case client := <-game.Add:
-            game.addClient(client)
-        case client := <-game.Remove:
-            game.removeClient(client)
-        }
-    }
-}
-
-func (game *Game) gameLoop() {
-    // tobe modifyed
-    // state machine
-}
