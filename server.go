@@ -56,7 +56,15 @@ func (s *GameServer) Connecting(ctx context.Context, req *proto.ConnectRequest) 
     s.game.addClient(newClient)
     s.game.Mu.Unlock()
 
-    return nil, nil
+    return &proto.ConnectResponse{
+        Token: "test",
+        Players: []*proto.Player{},
+    }, nil
+}
+
+func (s *GameServer) ShowPlayers(req *proto.ShowPlayersRequest, stream proto.Game_ShowPlayersServer) error{
+    // send response when new player connected
+   return nil
 }
 
 func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
