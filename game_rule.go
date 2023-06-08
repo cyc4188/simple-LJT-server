@@ -9,6 +9,8 @@ import (
 type GameRule interface {
     PlayerCount() int       // 玩家数量
     DeckCount() int         // 几副牌
+    CardCount() int
+    CardPerPlayer() int     // 每个玩家的牌数
     PokerHands([]Card) bool // 可打出的牌型
     CompareHands([]Card, []Card) int // 比较两副牌的大小
     generateDeck() []Card   // 生成牌组
@@ -33,6 +35,14 @@ func (rule *DdzGameRule) PlayerCount() int {
 
 func (rule *DdzGameRule) DeckCount() int {
     return DDZ_DECK_COUNT
+}
+
+func (rule *DdzGameRule) CardPerPlayer() int {
+    return rule.CardCount() / rule.PlayerCount()
+}
+
+func (rule *DdzGameRule) CardCount() int {
+    return rule.DeckCount() * CARD_PER_DECK
 }
 
 func (rule *DdzGameRule) PokerHands(cards []Card) bool {

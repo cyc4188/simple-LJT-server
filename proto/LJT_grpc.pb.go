@@ -19,9 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Game_Connecting_FullMethodName  = "/game.Game/Connecting"
-	Game_ShowPlayers_FullMethodName = "/game.Game/ShowPlayers"
-	Game_Stream_FullMethodName      = "/game.Game/Stream"
+	Game_Connecting_FullMethodName = "/game.Game/Connecting"
+	Game_Stream_FullMethodName     = "/game.Game/Stream"
 )
 
 // GameClient is the client API for Game service.
@@ -29,7 +28,6 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GameClient interface {
 	Connecting(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*ConnectResponse, error)
-	ShowPlayers(ctx context.Context, in *ShowPlayersRequest, opts ...grpc.CallOption) (Game_ShowPlayersClient, error)
 	Stream(ctx context.Context, opts ...grpc.CallOption) (Game_StreamClient, error)
 }
 
@@ -50,40 +48,8 @@ func (c *gameClient) Connecting(ctx context.Context, in *ConnectRequest, opts ..
 	return out, nil
 }
 
-func (c *gameClient) ShowPlayers(ctx context.Context, in *ShowPlayersRequest, opts ...grpc.CallOption) (Game_ShowPlayersClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Game_ServiceDesc.Streams[0], Game_ShowPlayers_FullMethodName, opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &gameShowPlayersClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type Game_ShowPlayersClient interface {
-	Recv() (*ShowPlayersResponse, error)
-	grpc.ClientStream
-}
-
-type gameShowPlayersClient struct {
-	grpc.ClientStream
-}
-
-func (x *gameShowPlayersClient) Recv() (*ShowPlayersResponse, error) {
-	m := new(ShowPlayersResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 func (c *gameClient) Stream(ctx context.Context, opts ...grpc.CallOption) (Game_StreamClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Game_ServiceDesc.Streams[1], Game_Stream_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &Game_ServiceDesc.Streams[0], Game_Stream_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +84,6 @@ func (x *gameStreamClient) Recv() (*StreamResponse, error) {
 // for forward compatibility
 type GameServer interface {
 	Connecting(context.Context, *ConnectRequest) (*ConnectResponse, error)
-	ShowPlayers(*ShowPlayersRequest, Game_ShowPlayersServer) error
 	Stream(Game_StreamServer) error
 	mustEmbedUnimplementedGameServer()
 }
@@ -129,9 +94,6 @@ type UnimplementedGameServer struct {
 
 func (UnimplementedGameServer) Connecting(context.Context, *ConnectRequest) (*ConnectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Connecting not implemented")
-}
-func (UnimplementedGameServer) ShowPlayers(*ShowPlayersRequest, Game_ShowPlayersServer) error {
-	return status.Errorf(codes.Unimplemented, "method ShowPlayers not implemented")
 }
 func (UnimplementedGameServer) Stream(Game_StreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method Stream not implemented")
@@ -165,27 +127,6 @@ func _Game_Connecting_Handler(srv interface{}, ctx context.Context, dec func(int
 		return srv.(GameServer).Connecting(ctx, req.(*ConnectRequest))
 	}
 	return interceptor(ctx, in, info, handler)
-}
-
-func _Game_ShowPlayers_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(ShowPlayersRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(GameServer).ShowPlayers(m, &gameShowPlayersServer{stream})
-}
-
-type Game_ShowPlayersServer interface {
-	Send(*ShowPlayersResponse) error
-	grpc.ServerStream
-}
-
-type gameShowPlayersServer struct {
-	grpc.ServerStream
-}
-
-func (x *gameShowPlayersServer) Send(m *ShowPlayersResponse) error {
-	return x.ServerStream.SendMsg(m)
 }
 
 func _Game_Stream_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -227,11 +168,6 @@ var Game_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "ShowPlayers",
-			Handler:       _Game_ShowPlayers_Handler,
-			ServerStreams: true,
-		},
 		{
 			StreamName:    "Stream",
 			Handler:       _Game_Stream_Handler,

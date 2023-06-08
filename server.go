@@ -55,6 +55,10 @@ func (s *GameServer) Connecting(ctx context.Context, req *proto.ConnectRequest) 
     s.game.Mu.Lock()
     s.game.addClient(newClient)
     s.game.Mu.Unlock()
+    if s.game.checkPlayerCount() {
+        s.game.startGame()
+        s.broadcastGameStatus()
+    }
 
     return &proto.ConnectResponse{
         Token: "test",
@@ -62,12 +66,48 @@ func (s *GameServer) Connecting(ctx context.Context, req *proto.ConnectRequest) 
     }, nil
 }
 
-func (s *GameServer) ShowPlayers(req *proto.ShowPlayersRequest, stream proto.Game_ShowPlayersServer) error{
-    // send response when new player connected
-   return nil
+func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
+    ctx := stream.Context()
+
+    go func() {
+        // TODO: listen to client's stream
+        for {
+            req, err := stream.Recv()
+            if err != nil {
+                log.Printf("receive error: %v", err)
+                return 
+            }
+            log.Printf("receive: %v", req.PlayCards) 
+            s.broadcastGameStatus()
+        }
+    }()
+    
+    select {
+    case <-ctx.Done():
+        log.Printf("client disconnected")
+        // TODO: remove client from game
+        return nil
+    }
+    return nil
 }
 
-func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
-    // TODO: not implemented
-    return nil
+func (s *GameServer) broadcast(msg *proto.StreamResponse) {
+    for _, client := range s.clients {
+        if client.streamServer == nil {
+            continue
+        }
+        client.streamServer.Send(msg)
+    }
+}
+
+func (s *GameServer) broadcastGameStatus() { // 游戏进行中，广播游戏状态
+    // TODO: broadcast game status
+    for {
+        select {
+        case change := <-s.game.ChangeChan:
+            // TODO
+        default:
+
+        }
+    }
 }

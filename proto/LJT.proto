@@ -8,7 +8,6 @@ import "google/protobuf/timestamp.proto";
 
 service Game {
     rpc Connecting (ConnectRequest) returns (ConnectResponse) {} // used to connect the server
-    rpc ShowPlayers (ShowPlayersRequest) returns (stream ShowPlayersResponse) {} // used to show players
     rpc Stream (stream StreamRequest) returns (stream StreamResponse) {} // used to modify the game state
 }
 
@@ -21,14 +20,6 @@ message ConnectRequest {
 message ConnectResponse {
     string token = 1;
     repeated Player players = 2;
-}
-
-message ShowPlayersRequest {
-
-}
-
-message ShowPlayersResponse {
-    repeated Player players = 1;
 }
 
 message Player {

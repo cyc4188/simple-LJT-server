@@ -1,12 +1,16 @@
 package main
 
 import (
+	"LJT-server/proto"
+
 	"github.com/google/uuid"
 )
 
 type Client struct {
+    streamServer proto.Game_StreamServer
     uuid uuid.UUID
     name string
+    Player *Player
     game *Game
 }
 
