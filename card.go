@@ -1,5 +1,7 @@
 package main
 
+import "LJT-server/proto"
+
 const (
     CARD_PER_DECK = 54
 )
@@ -54,4 +56,11 @@ func generateDeck() []Card {
     deck = append(deck, Card{4, 14})
     deck = append(deck, Card{4, 15})
     return deck
+}
+
+func (c *Card) ToProto() *proto.Card {
+    return &proto.Card {
+        Suit: int32(c.suit), 
+        Rank: int32(c.rank),
+    }
 }

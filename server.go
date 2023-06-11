@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -18,10 +19,12 @@ type GameServer struct {
 }
 
 func NewGameServer(game *Game) *GameServer {
-    return &GameServer{
+    server :=  &GameServer{
         game: game,
         clients: make(map[uuid.UUID]*Client),
     }
+    go server.watchChange()
+    return server
 }
 
 // 处理连接请求
@@ -57,7 +60,6 @@ func (s *GameServer) Connecting(ctx context.Context, req *proto.ConnectRequest) 
     s.game.Mu.Unlock()
     if s.game.checkPlayerCount() {
         s.game.startGame()
-        s.broadcastGameStatus()
     }
 
     return &proto.ConnectResponse{
@@ -69,8 +71,18 @@ func (s *GameServer) Connecting(ctx context.Context, req *proto.ConnectRequest) 
 func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
     ctx := stream.Context()
 
+    // 获取第一个请求
+    req, err := stream.Recv()
+    if err != nil {
+        log.Printf("receive error: %v", err)
+        return nil
+    }
+    log.Printf("receive: %v", req.PlayCards) 
+    playerId, err := uuid.Parse(req.PlayCards.Player.Id)
+    // 根据请求的uuid得到对应的streamServer
+    s.clients[playerId].streamServer = stream
+
     go func() {
-        // TODO: listen to client's stream
         for {
             req, err := stream.Recv()
             if err != nil {
@@ -78,7 +90,8 @@ func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
                 return 
             }
             log.Printf("receive: %v", req.PlayCards) 
-            s.broadcastGameStatus()
+            // push to action chan 
+            s.handleRequest(req)
         }
     }()
     
@@ -91,23 +104,60 @@ func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
     return nil
 }
 
-func (s *GameServer) broadcast(msg *proto.StreamResponse) {
-    for _, client := range s.clients {
-        if client.streamServer == nil {
-            continue
+func (s *GameServer) handleRequest(req *proto.StreamRequest) {
+    // TODO
+}
+
+func (s *GameServer) watchChange() {
+    for {
+        change := <-s.game.ChangeChan
+        switch change.(type) {
+        case GameStatus:
+            change := change.(GameStatus)
+            s.broadcast(change)
         }
-        client.streamServer.Send(msg)
     }
 }
 
-func (s *GameServer) broadcastGameStatus() { // 游戏进行中，广播游戏状态
-    // TODO: broadcast game status
-    for {
-        select {
-        case change := <-s.game.ChangeChan:
-            // TODO
-        default:
 
+// broadcast game status to all clients
+// and its own cards
+func (s *GameServer) broadcast(status GameStatus) {
+    // sleep for 3 seconds to wait for other players
+    time.Sleep(3 * time.Second)
+
+    log.Printf("broadcast game status")
+
+    players := make([]*proto.Player, 0)
+    for _, player := range status.Players {
+        players = append(players, player.ToProto())
+    }
+    current_cards := make([]*proto.Card, 0)
+    for _, card := range status.current_cards {
+        current_cards = append(current_cards, card.ToProto())
+    }
+
+    for _, client := range s.clients {
+        if client.streamServer == nil {
+            log.Println("client ", client.uuid, " stream server is nil")
+            continue
         }
+        cards := make([]*proto.Card, 0)
+        for _, card := range client.Player.Cards {
+            cards = append(cards, card.ToProto())
+        }
+
+        msg := &proto.StreamResponse{  
+            Response: &proto.StreamResponse_Continue{
+                Continue: &proto.Continue{
+                    Score: int32(status.score),
+                    Players: players,
+                    CurrentCards: current_cards, 
+                    CurrentPlayer: status.current_player.ToProto(),
+                    Cards: cards,
+                },
+            },
+        }
+        client.streamServer.Send(msg)
     }
 }

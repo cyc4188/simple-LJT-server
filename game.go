@@ -1,6 +1,8 @@
 package main
 
 import (
+	"LJT-server/proto"
+	"math/rand"
 	"sync"
 
 	"github.com/google/uuid"
@@ -27,16 +29,41 @@ type GameEnd struct {
 
 type GameStatus struct {
     Change
-    // TODO
+    score int
+    current_cards []Card
+    current_player *Player
+    Players []*Player
+}
+
+
+func (gamestatus *GameStatus) ToProto(player *Player) *proto.StreamResponse {
+    players := make([]*proto.Player, 0)
+    for _, player := range gamestatus.Players {
+        players = append(players, player.ToProto())
+    }
+    current_cards := make([]*proto.Card, 0)
+    for _, card := range gamestatus.current_cards {
+        current_cards = append(current_cards, card.ToProto())
+    }
+    return &proto.StreamResponse{
+        Response: &proto.StreamResponse_Continue{
+            Continue: &proto.Continue{
+                Score: int32(gamestatus.score),
+                CurrentCards: current_cards,
+                CurrentPlayer: gamestatus.current_player.ToProto(),
+                Players: players,
+            },
+        },
+    }
 }
 
 type Game struct {
 	clients  map[*Client]uuid.UUID // all connected clients and ites id
 	gameRule GameRule
-    score int
     Mu sync.RWMutex
     GameState State // wait, playing, end
     ChangeChan chan Change
+    GameStatus GameStatus
 }
 
 func NewGame(gameRule GameRule) *Game {
@@ -44,6 +71,7 @@ func NewGame(gameRule GameRule) *Game {
 		clients:  make(map[*Client]uuid.UUID),
 		gameRule: gameRule,
         GameState: Waiting,
+        ChangeChan: make(chan Change, 1),
 	}
 }
 
@@ -70,37 +98,57 @@ func (game *Game) checkPlayerCount() bool {
 	return len(game.clients) == game.gameRule.PlayerCount()
 }
 
+// return game status
+func (game *Game) getStatus() GameStatus {
+    return game.GameStatus
+}
+
+func (game *Game) initGameStatus() {
+    game.GameStatus.score = 0
+    game.GameStatus.current_cards = make([]Card, 0)
+
+    game.GameStatus.Players = make([]*Player, 0)
+    for client := range game.clients {
+        game.GameStatus.Players = append(game.GameStatus.Players, client.Player)
+    }
+
+    game.GameStatus.current_player = game.GameStatus.Players[rand.Intn(len(game.GameStatus.Players))]
+}
+
+// start game
+// deal cards
+// watch for action
 func (game *Game) startGame() {
     game.GameState = Playing
-    game.score = 0
     for client := range game.clients {
         client.Player = NewPlayer(client)
     }
     game.dealCards()
+    game.initGameStatus()
+    game.SendChange(game.getStatus()) // 发送游戏状态
     go game.watchAction()
 }
 
-// 监听玩家动作，如出牌，跳过等
-func (game *Game) watchAction() {
-    // TODO
-}
-
-func (game *Game) SendChange(change Change) {
-    // TODO
-}
-
+// randomly deal cards to players
 func (game *Game) dealCards() {
-    // TODO
     decks := game.gameRule.generateDeck()
     
     i := 0
     cardsPerPlayer := game.gameRule.CardPerPlayer()
     for client := range game.clients {
-        client.Player.cards = make([]Card, cardsPerPlayer)
-        client.Player.cards = decks[i:i+cardsPerPlayer]
+        client.Player.Cards = make([]Card, cardsPerPlayer)
+        client.Player.Cards = decks[i:i+cardsPerPlayer]
         i += cardsPerPlayer
     }
-    // TODO
-    // send status to server
 }
 
+// 监听玩家动作，如出牌，跳过等
+func (game *Game) watchAction() {
+    for {
+
+    }
+}
+
+func (game *Game) SendChange(change Change) {
+    game.ChangeChan <- change
+}

@@ -20,7 +20,7 @@ type DdzGameRule struct {
 }
 
 const (
-    DDZ_PLAYER_COUNT = 3
+    DDZ_PLAYER_COUNT = 1 // test
     DDZ_DECK_COUNT = 1
 )
 

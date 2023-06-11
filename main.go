@@ -15,6 +15,8 @@ import (
 var addr = flag.String("addr", ":8080", "http service address")
 
 func main() {
+    log.SetFlags(log.LstdFlags | log.Lshortfile)
+
     port := flag.Int("port", 8080, "port to listen on");
     flag.Parse();
 

@@ -4,20 +4,20 @@ import "LJT-server/proto"
 
 type Player struct {
     client *Client 
-    cards []Card
+    Cards []Card
     score int
 }
 
 func NewPlayer(client *Client) *Player {
     return &Player{
         client: client,
-        cards: make([]Card, 0),
+        Cards: make([]Card, 0),
         score: 0,
     }
 }
 
 func (player *Player) GetCardNum() int {
-    return len(player.cards)
+    return len(player.Cards)
 }
 
 func (player *Player) ToProto() *proto.Player {
