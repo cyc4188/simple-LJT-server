@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -59,7 +58,7 @@ func (s *GameServer) Connecting(ctx context.Context, req *proto.ConnectRequest) 
     s.game.addClient(newClient)
     s.game.Mu.Unlock()
     if s.game.checkPlayerCount() {
-        s.game.startGame()
+        go s.game.startGame()
     }
 
     return &proto.ConnectResponse{
@@ -123,9 +122,6 @@ func (s *GameServer) watchChange() {
 // broadcast game status to all clients
 // and its own cards
 func (s *GameServer) broadcast(status GameStatus) {
-    // sleep for 3 seconds to wait for other players
-    time.Sleep(3 * time.Second)
-
     log.Printf("broadcast game status")
 
     players := make([]*proto.Player, 0)

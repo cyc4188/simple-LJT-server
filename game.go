@@ -4,6 +4,7 @@ import (
 	"LJT-server/proto"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -119,6 +120,9 @@ func (game *Game) initGameStatus() {
 // deal cards
 // watch for action
 func (game *Game) startGame() {
+    // sleep for 3 seconds to wait for other players
+    time.Sleep(3 * time.Second)
+
     game.GameState = Playing
     for client := range game.clients {
         client.Player = NewPlayer(client)
