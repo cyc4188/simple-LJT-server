@@ -30,12 +30,18 @@ message Player {
 }
 
 message StreamRequest {
-    PlayCards play_cards = 1;
+    oneof request {
+        PlayCards play_cards = 1;
+        Pass pass = 2;
+    }
 }
 
 message PlayCards { // play cards
     Player player = 1;
     repeated Card cards = 2;
+}
+message Pass { // pass
+    Player player = 1;
 }
 
 message Card { // 包括花色和大小

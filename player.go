@@ -6,6 +6,7 @@ type Player struct {
     client *Client 
     Cards []Card
     score int
+    index uint
 }
 
 func NewPlayer(client *Client) *Player {

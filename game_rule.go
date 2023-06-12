@@ -14,6 +14,7 @@ type GameRule interface {
     PokerHands([]Card) bool // 可打出的牌型
     CompareHands([]Card, []Card) int // 比较两副牌的大小
     generateDeck() []Card   // 生成牌组
+    checkCards([]Card) bool // 检查牌组是否合法 
 }
 
 type DdzGameRule struct {
@@ -55,6 +56,7 @@ func (rule *DdzGameRule) CompareHands(cards1 []Card, cards2 []Card) int {
     return cards1[0].Compare(&cards2[0])
 }
 
+// randomly generate decks and shuffle
 func (rule *DdzGameRule) generateDeck() []Card {
     deckCount := rule.DeckCount()
     deck := make([]Card, 0, deckCount * CARD_PER_DECK)
@@ -70,4 +72,8 @@ func (rule *DdzGameRule) generateDeck() []Card {
     }
 
     return deck
+}
+
+func (rule *DdzGameRule) checkCards(cards []Card) bool {
+    return true
 }

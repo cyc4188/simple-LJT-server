@@ -4,6 +4,7 @@ import (
 	"LJT-server/proto"
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 
@@ -76,8 +77,8 @@ func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
         log.Printf("receive error: %v", err)
         return nil
     }
-    log.Printf("receive: %v", req.PlayCards) 
-    playerId, err := uuid.Parse(req.PlayCards.Player.Id)
+    log.Printf("receive: %v", req) 
+    playerId, err := uuid.Parse(req.GetPlayCards().Player.GetId())
     // 根据请求的uuid得到对应的streamServer
     s.clients[playerId].streamServer = stream
 
@@ -88,9 +89,14 @@ func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
                 log.Printf("receive error: %v", err)
                 return 
             }
-            log.Printf("receive: %v", req.PlayCards) 
+            log.Printf("receive: %v", req) 
             // push to action chan 
-            s.handleRequest(req)
+            switch req.GetRequest().(type) {
+            case *proto.StreamRequest_PlayCards:
+                s.handlePlayCardsRequest(req, playerId)
+            case *proto.StreamRequest_Pass:
+
+            } 
         }
     }()
     
@@ -103,8 +109,28 @@ func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
     return nil
 }
 
-func (s *GameServer) handleRequest(req *proto.StreamRequest) {
+func (s *GameServer) handlePlayCardsRequest(req *proto.StreamRequest, playerId uuid.UUID) {
     // TODO
+    // to action
+    player, err := s.GetPlayerById(playerId)
+    if err != nil {
+        log.Printf(err.Error())
+        return
+    }
+    s.game.ActionChan <- PlayCards{
+        player: player,
+        cards: CardsFromProto(req.GetPlayCards().Cards),
+    } 
+}
+func (s *GameServer) handlePassRequest(req *proto.StreamRequest, playerId uuid.UUID) {
+    player, err := s.GetPlayerById(playerId)
+    if err != nil {
+        log.Printf(err.Error())
+        return
+    }
+    s.game.ActionChan <- Pass{
+        player: player,
+    }
 }
 
 func (s *GameServer) watchChange() {
@@ -151,9 +177,17 @@ func (s *GameServer) broadcast(status GameStatus) {
                     CurrentCards: current_cards, 
                     CurrentPlayer: status.current_player.ToProto(),
                     Cards: cards,
-                },
+                }, 
             },
         }
         client.streamServer.Send(msg)
     }
+}
+
+func (s *GameServer) GetPlayerById(id uuid.UUID) (*Player, error) {
+    // id found in clients:
+    if client, ok := s.clients[id]; ok {
+        return client.Player, nil
+    }
+    return nil, fmt.Errorf("uuid: %v not found", id)
 }
