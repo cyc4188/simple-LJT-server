@@ -27,6 +27,7 @@ message Player {
     string name = 2;
     int32 score = 3;
     int32 card_num = 4;
+    uint32 index = 5;
 }
 
 message StreamRequest {
