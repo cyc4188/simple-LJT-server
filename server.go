@@ -95,7 +95,7 @@ func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
             case *proto.StreamRequest_PlayCards:
                 s.handlePlayCardsRequest(req, playerId)
             case *proto.StreamRequest_Pass:
-
+                s.handlePassRequest(req, playerId)
             } 
         }
     }()

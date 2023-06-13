@@ -45,6 +45,14 @@ func (c *Card) String() string {
     return suits[c.suit] + "." + mapRank[c.rank]
 }
 
+
+func (c *Card) ToProto() *proto.Card {
+    return &proto.Card {
+        Suit: int32(c.suit), 
+        Rank: int32(c.rank),
+    }
+}
+
 // generate a deck of cards
 func generateDeck() []Card {
     deck := make([]Card, 0, CARD_PER_DECK) 
@@ -58,9 +66,16 @@ func generateDeck() []Card {
     return deck
 }
 
-func (c *Card) ToProto() *proto.Card {
-    return &proto.Card {
-        Suit: int32(c.suit), 
-        Rank: int32(c.rank),
+func IsSubsetForCards(cards []Card, subset []Card) bool {
+    set := make(map[Card]int)
+    for _, card := range cards {
+        set[card]++
     }
+    for _, card := range subset {
+        if set[card] == 0 {
+            return false
+        }
+        set[card]--
+    }
+    return true
 }

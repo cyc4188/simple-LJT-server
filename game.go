@@ -2,9 +2,11 @@ package main
 
 import (
 	"LJT-server/proto"
+	"errors"
 	"math/rand"
 	"sync"
 	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -32,6 +34,7 @@ type GameStatus struct {
     score int
     current_cards []Card
     current_player *Player
+    current_index int
     Players []*Player
 }
 
@@ -145,7 +148,7 @@ func (game *Game) startGame() {
     }
     game.dealCards()
     game.initGameStatus()
-    game.SendChange(game.getStatus()) // 发送游戏状态
+    game.sendChange(game.getStatus()) // 发送游戏状态
     go game.watchAction()
 }
 
@@ -169,21 +172,74 @@ func (game *Game) watchAction() {
         switch action.(type) {
         case PlayCards:
             game.handlePlayCards(action.(PlayCards))
+        case Pass:
+            game.handlePass(action.(Pass))
         }
-        game.SendChange(game.getStatus())
+        game.sendChange(game.getStatus())
     }
 }
 
-func (game *Game) handlePlayCards(play_cards PlayCards) {
-    // 1. check if cards are valid 
+func (game *Game) handlePlayCards(play_cards PlayCards)  {
+    _, err := game.checkPlayCards(play_cards) 
+    if err != nil {
+        // TODO: send error message to client
+        return 
+    }
+    // 更新游戏状态
+    game.GameStatus.current_cards = play_cards.cards // 更新当前牌
+    play_cards.player.PlayCards(play_cards.cards)    // 玩家出牌
+    game.nextPlayer() 
 
-    // 2. check if cards are bigger than current cards
+    // 广播游戏状态
+    game.sendChange(game.getStatus())
 }
 
 func (game *Game) handlePass(pass Pass) {
+    _, err := game.checkPass(pass) 
+    if err != nil {
+        return
+    }
+    // TODO: 判断是否回到出牌方，如果是，则清空当前牌
+    game.nextPlayer()
+
+    game.sendChange(game.getStatus())
 }
 
+func (game *Game) checkPlayCards(play_cards PlayCards) (bool, error){
+    // 0. check if it is current player
+    if play_cards.player != game.GameStatus.current_player {
+        return false, errors.New("not current player")
+    }
+    // 1. check the player has the cards
+    if play_cards.player.HasCards(play_cards.cards) == false {
+        return false, errors.New("player does not have the cards")
+    }
+    // 2. check if cards are valid 
+    if game.gameRule.checkHandsIsValid(play_cards.cards) == false {
+        return false, errors.New("invalid hands")
+    }
+    // 3. check if cards are bigger than current cards
+    if (game.gameRule.CompareHands(
+        play_cards.cards, 
+        game.GameStatus.current_cards) != 1) {
+            return false, errors.New("invalid hands")
+        }
+    return true, nil
+}
+func (game *Game) checkPass(pass Pass) (bool, error) {
+    if pass.player != game.GameStatus.current_player {
+        return false, errors.New("not current player")
+    }
+    return true, nil
+}
 
-func (game *Game) SendChange(change Change) {
+// move to next player
+// will change game status
+func (game *Game) nextPlayer() {
+    game.GameStatus.current_index = (game.GameStatus.current_index + 1) % len(game.GameStatus.Players)
+    game.GameStatus.current_player = game.GameStatus.Players[game.GameStatus.current_index]
+}
+
+func (game *Game) sendChange(change Change) {
     game.ChangeChan <- change
 }
