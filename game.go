@@ -1,7 +1,6 @@
 package main
 
 import (
-	"LJT-server/proto"
 	"errors"
 	"log"
 	"math/rand"
@@ -22,13 +21,16 @@ const (
 
 type Change interface {
 }
-
 type GameStart struct {
 	Change
 }
-
 type GameEnd struct {
 	Change
+}
+type GameFail struct { // 出牌失败
+	Change
+	msg    string
+	player *Player
 }
 
 type GameStatus struct {
@@ -51,35 +53,6 @@ type PlayCards struct {
 type Pass struct {
 	Action
 	player *Player
-}
-
-func (gamestatus *GameStatus) ToProto(player *Player) *proto.StreamResponse {
-	players := make([]*proto.Player, 0)
-	for _, player := range gamestatus.Players {
-		players = append(players, player.ToProto())
-	}
-	current_cards := make([]*proto.Card, 0)
-	for _, card := range gamestatus.current_cards {
-		current_cards = append(current_cards, card.ToProto())
-	}
-
-	last_played := make([]*proto.LastPlayed, 0)
-	for _, player := range gamestatus.Players {
-		last_played = append(last_played, &proto.LastPlayed{
-			Player: player.ToProto(),
-			Cards:  CardsToProto(player.LastPlayed),
-		})
-	}
-	return &proto.StreamResponse{
-		Response: &proto.StreamResponse_Continue{
-			Continue: &proto.Continue{
-				Score:         int32(gamestatus.score),
-				CurrentCards:  current_cards,
-				CurrentPlayer: gamestatus.current_player.ToProto(),
-				Players:       last_played,
-			},
-		},
-	}
 }
 
 type Game struct {
@@ -154,6 +127,7 @@ func (game *Game) startGame() {
 	for client := range game.clients {
 		client.Player = NewPlayer(client)
 		client.Player.index = uint(index)
+		client.Player.client = client
 		index++
 	}
 	game.dealCards()
@@ -193,7 +167,11 @@ func (game *Game) handlePlayCards(play_cards PlayCards) {
 	log.Println("handle play cards")
 	_, err := game.checkPlayCards(play_cards)
 	if err != nil {
-		// TODO: send error message to client
+		// send error message to client
+		game.sendChange(GameFail{
+			msg:    err.Error(),
+			player: play_cards.player,
+		})
 		return
 	}
 	// 更新游戏状态

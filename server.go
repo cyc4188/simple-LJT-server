@@ -33,25 +33,25 @@ func (s *GameServer) Connecting(ctx context.Context, req *proto.ConnectRequest) 
 	if s.game.isGameFull() {
 		return nil, errors.New("server is full")
 	}
-	playerId, err := uuid.Parse(req.Id)
+	clientId, err := uuid.Parse(req.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	// check if player already connected
 	s.mu.RLock()
-	if _, ok := s.clients[playerId]; ok {
+	if _, ok := s.clients[clientId]; ok {
 		s.mu.RUnlock()
 		return nil, errors.New("player already connected")
 	}
 	s.mu.RUnlock()
 
-	newClient := NewClient(playerId, req.Name, s.game)
+	newClient := NewClient(clientId, req.Name, s.game)
 
 	log.Printf("player %s connected", req.Name)
 	// add client to the server
 	s.mu.Lock()
-	s.clients[playerId] = newClient
+	s.clients[clientId] = newClient
 	s.mu.Unlock()
 
 	// add client to the game
@@ -78,9 +78,9 @@ func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
 		return nil
 	}
 	log.Printf("receive: %v", req)
-	playerId, err := uuid.Parse(req.GetPlayCards().Player.GetId())
+	clientId, err := uuid.Parse(req.GetPlayCards().Player.GetId())
 	// 根据请求的uuid得到对应的streamServer
-	s.clients[playerId].streamServer = stream
+	s.clients[clientId].streamServer = stream
 
 	go func() {
 		for {
@@ -93,9 +93,9 @@ func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
 			// push to action chan
 			switch req.GetRequest().(type) {
 			case *proto.StreamRequest_PlayCards:
-				s.handlePlayCardsRequest(req, playerId)
+				s.handlePlayCardsRequest(req, clientId)
 			case *proto.StreamRequest_Pass:
-				s.handlePassRequest(req, playerId)
+				s.handlePassRequest(req, clientId)
 			}
 		}
 	}()
@@ -138,6 +138,9 @@ func (s *GameServer) watchChange() {
 		case GameStatus:
 			change := change.(GameStatus)
 			s.broadcast(change)
+		case GameFail:
+			change := change.(GameFail)
+			s.sendFail(change)
 		}
 	}
 }
@@ -166,7 +169,7 @@ func (s *GameServer) broadcast(status GameStatus) {
 			cards = append(cards, card.ToProto())
 		}
 
-		msg := s.game.GameStatus.ToProto(client.Player)
+		msg := status.ToProto(client.Player)
 
 		// msg := &proto.StreamResponse{
 		// 	Response: &proto.StreamResponse_Continue{
@@ -180,6 +183,22 @@ func (s *GameServer) broadcast(status GameStatus) {
 		// 	},
 		// }
 
+		client.streamServer.Send(msg)
+	}
+}
+
+// send play fail to client
+func (s *GameServer) sendFail(fail GameFail) {
+	for _, client := range s.clients {
+		// check client and player
+		if client != fail.player.client {
+			continue
+		}
+		if client.streamServer == nil {
+			log.Println("client ", client.uuid, " stream server is nil")
+			continue
+		}
+		msg := fail.ToProto()
 		client.streamServer.Send(msg)
 	}
 }
