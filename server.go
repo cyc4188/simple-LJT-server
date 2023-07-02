@@ -103,7 +103,8 @@ func (s *GameServer) Stream(stream proto.Game_StreamServer) error {
 	select {
 	case <-ctx.Done():
 		log.Printf("client disconnected")
-		// TODO: remove client from game
+		// remove client from server
+		delete(s.clients, clientId)
 		return nil
 	}
 	return nil
@@ -170,18 +171,6 @@ func (s *GameServer) broadcast(status GameStatus) {
 		}
 
 		msg := status.ToProto(client.Player)
-
-		// msg := &proto.StreamResponse{
-		// 	Response: &proto.StreamResponse_Continue{
-		// 		Continue: &proto.Continue{
-		// 			Score:         int32(status.score),
-		// 			Players:       players,
-		// 			CurrentCards:  current_cards,
-		// 			CurrentPlayer: status.current_player.ToProto(),
-		// 			Cards:         cards,
-		// 		},
-		// 	},
-		// }
 
 		client.streamServer.Send(msg)
 	}
