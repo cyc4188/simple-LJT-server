@@ -56,6 +56,7 @@ func (gamestatus *GameStatus) ToProto(player *Player) *proto.StreamResponse {
 				CurrentCards:  current_cards,
 				CurrentPlayer: gamestatus.current_player.ToProto(),
 				Players:       last_played,
+				Cards:         CardsToProto(player.Cards),
 			},
 		},
 	}

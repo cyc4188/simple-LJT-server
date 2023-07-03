@@ -149,7 +149,7 @@ func (s *GameServer) watchChange() {
 // broadcast game status to all clients
 // and its own cards
 func (s *GameServer) broadcast(status GameStatus) {
-	log.Printf("broadcast game status")
+	log.Printf("broadcast game status %v", status)
 
 	players := make([]*proto.Player, 0)
 	for _, player := range status.Players {
@@ -172,6 +172,7 @@ func (s *GameServer) broadcast(status GameStatus) {
 
 		msg := status.ToProto(client.Player)
 
+		log.Printf("send to client %s", client.name)
 		client.streamServer.Send(msg)
 	}
 }
